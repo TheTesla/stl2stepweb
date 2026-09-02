@@ -6,15 +6,20 @@ from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException, Coo
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader
 
 from app.config import get_settings, ensure_dirs
 from app.models import SessionManager, JobStatus
 from app.worker import ConversionWorker
 
+# Create Jinja2 environment with cache_size=0 to avoid unhashable type errors
+# The request object isn't hashable, so we disable template caching
+jinja_env = Environment(loader=FileSystemLoader("templates"), cache_size=0)
+templates = Jinja2Templates(env=jinja_env)
+
 session_manager: SessionManager = None
 worker: ConversionWorker = None
 settings = get_settings()
-templates = Jinja2Templates(directory="templates")
 
 
 @asynccontextmanager
