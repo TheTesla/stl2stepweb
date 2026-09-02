@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL to STEP Converter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #007bff;
+            background: #f8f9fa;
+        }
+        .upload-area input {
+            display: none;
+        }
+        .upload-icon {
+            font-size: 48px;
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+        }
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: none;
+        }
+        .file-info.visible {
+            display: block;
+        }
+        .file-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .file-size {
+            color: #666;
+            font-size: 14px;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #0056b3;
+        }
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .jobs-section {
+            margin-top: 30px;
+        }
+        .job-card {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        .job-card.processing {
+            border-left: 4px solid #ffc107;
+        }
+        .job-card.completed {
+            border-left: 4px solid #28a745;
+        }
+        .job-card.failed {
+            border-left: 4px solid #dc3545;
+        }
+        .job-card.queued {
+            border-left: 4px solid #6c757d;
+        }
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .job-filename {
+            font-weight: 600;
+            color: #333;
+        }
+        .job-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .job-status.queued { background: #e9ecef; color: #6c757d; }
+        .job-status.processing { background: #fff3cd; color: #856404; }
+        .job-status.completed { background: #d4edda; color: #155724; }
+        .job-status.failed { background: #f8d7da; color: #721c24; }
+        .job-status.expired { background: #e9ecef; color: #6c757d; }
+        .job-progress {
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .job-progress-bar {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s;
+        }
+        .job-progress-bar.processing { background: #ffc107; }
+        .job-progress-bar.completed { background: #28a745; }
+        .job-progress-bar.failed { background: #dc3545; }
+        .job-details {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        .job-detail {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .job-error {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8d7da;
+            color: #721c24;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .btn-download {
+            background: #28a745;
+            color: white;
+            margin-top: 10px;
+        }
+        .btn-download:hover { background: #218838; }
+        .queue-info {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .queue-info.hidden {
+            display: none;
+        }
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+        .settings-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .settings-btn:hover {
+            background: #f8f9fa;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.visible {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal h2 {
+            margin-bottom: 20px;
+        }
+        .setting-item {
+            margin-bottom: 15px;
+        }
+        .setting-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .setting-item input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover { background: #5a6268; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="settings-btn" onclick="openSettings()">⚙ Einstellungen</button>
+        
+        <h1>STL → STEP Konverter</h1>
+        <p class="subtitle">Laden Sie Ihre STL-Datei hoch und erhalten Sie eine STEP-Datei zurück</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <p class="upload-text">STL-Datei hierher ziehen oder klicken zum Auswählen</p>
+            <input type="file" id="fileInput" accept=".stl,.STL" onchange="handleFileSelect(event)">
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+
+        <button class="btn btn-primary" id="convertBtn" onclick="uploadFile()" disabled>Konvertieren starten</button>
+
+        <div class="queue-info hidden" id="queueInfo">
+            <strong>Warteschlange:</strong> <span id="queuePosition">0</span> Dateien vor Ihnen | 
+            <strong>Parallel:</strong> <span id="maxParallel">2</span>
+        </div>
+
+        <div class="jobs-section">
+            <h2>Ihre Konvertierungen</h2>
+            <div id="jobsList">
+                <div class="empty-state">Noch keine Dateien hochgeladen</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h2>Einstellungen</h2>
+            <div class="setting-item">
+                <label>Max. parallele Konvertierungen: <span id="maxParallelDisplay">2</span></label>
+                <input type="number" id="settingMaxParallel" min="1" max="10" value="2">
+            </div>
+            <div class="setting-item">
+                <label>Timeout pro Konvertierung (Sekunden): <span id="timeoutDisplay">300</span></label>
+                <input type="number" id="settingTimeout" min="30" max="3600" value="300">
+            </div>
+            <div class="setting-item">
+                <label>Memory Limit (MB): <span id="memoryDisplay">2048</span></label>
+                <input type="number" id="settingMemory" min="256" max="8192" value="2048">
+            </div>
+            <div class="setting-item">
+                <label>Max. Dateiaufbewahrung (Sekunden): <span id="retentionDisplay">3600</span></label>
+                <input type="number" id="settingRetention" min="60" max="86400" value="3600">
+            </div>
+            <div class="setting-item">
+                <label>Keep-Alive Intervall (Sekunden): <span id="keepAliveDisplay">30</span></label>
+                <input type="number" id="settingKeepAlive" min="10" max="300" value="30">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeSettings()">Abbrechen</button>
+                <button class="btn btn-primary" onclick="saveSettings()">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFile = null;
+        let pollingIntervals = {};
+        let settings = {};
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const convertBtn = document.getElementById('convertBtn');
+        const queueInfo = document.getElementById('queueInfo');
+        const queuePosition = document.getElementById('queuePosition');
+        const jobsList = document.getElementById('jobsList');
+        const settingsModal = document.getElementById('settingsModal');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleFileSelect({ target: { files: e.dataTransfer.files } });
+            }
+        });
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!file.name.toLowerCase().endsWith('.stl')) {
+                alert('Bitte wählen Sie eine STL-Datei aus.');
+                return;
+            }
+
+            currentFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.add('visible');
+            convertBtn.disabled = false;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function uploadFile() {
+            if (!currentFile) return;
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            convertBtn.disabled = true;
+            convertBtn.textContent = 'Hochladen...';
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Upload fehlgeschlagen');
+                }
+
+                addJobCard(data.job_id, currentFile.name, data.status, data.position_in_queue);
+                startPolling(data.job_id);
+                updateQueueInfo();
+
+                currentFile = null;
+                fileInfo.classList.remove('visible');
+                fileInput.value = '';
+                convertBtn.textContent = 'Konvertieren starten';
+            } catch (error) {
+                alert('Fehler: ' + error.message);
+                convertBtn.disabled = false;
+                convertBtn.textContent = 'Konvertieren starten';
+            }
+        }
+
+        function addJobCard(jobId, filename, status, queuePos) {
+            const emptyState = jobsList.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+
+            const card = document.createElement('div');
+            card.className = `job-card ${status}`;
+            card.id = `job-${jobId}`;
+            card.innerHTML = `
+                <div class="job-header">
+                    <span class="job-filename">${escapeHtml(filename)}</span>
+                    <span class="job-status ${status}" id="status-${jobId}">${status}</span>
+                </div>
+                <div class="job-progress">
+                    <div class="job-progress-bar ${status}" id="progress-${jobId}" style="width: ${status === 'completed' ? '100%' : status === 'failed' ? '100%' : '0%'}"></div>
+                </div>
+                <div class="job-details">
+                    <span class="job-detail" id="queuePos-${jobId}">${status === 'queued' ? 'Position in Warteschlange: ' + queuePos : ''}</span>
+                    <span class="job-detail" id="time-${jobId}"></span>
+                </div>
+                <div class="job-error hidden" id="error-${jobId}"></div>
+                <button class="btn btn-download hidden" id="download-${jobId}" onclick="downloadFile('${jobId}')">STEP herunterladen</button>
+            `;
+            jobsList.insertBefore(card, jobsList.firstChild);
+        }
+
+        function updateJobCard(jobId, data) {
+            const card = document.getElementById(`job-${jobId}`);
+            if (!card) return;
+
+            card.className = `job-card ${data.status}`;
+            
+            const statusEl = document.getElementById(`status-${jobId}`);
+            if (statusEl) {
+                statusEl.className = `job-status ${data.status}`;
+                statusEl.textContent = data.status;
+            }
+
+            const progressEl = document.getElementById(`progress-${jobId}`);
+            if (progressEl) {
+                progressEl.className = `job-progress-bar ${data.status}`;
+                if (data.status === 'queued') {
+                    progressEl.style.width = '0%';
+                } else if (data.status === 'processing') {
+                    progressEl.style.width = '50%';
+                } else if (data.status === 'completed' || data.status === 'failed') {
+                    progressEl.style.width = '100%';
+                }
+            }
+
+            const queuePosEl = document.getElementById(`queuePos-${jobId}`);
+            if (queuePosEl) {
+                if (data.status === 'queued') {
+                    queuePosEl.textContent = `Position in Warteschlange: ${data.position_in_queue || 0}`;
+                } else {
+                    queuePosEl.textContent = '';
+                }
+            }
+
+            const errorEl = document.getElementById(`error-${jobId}`);
+            const downloadEl = document.getElementById(`download-${jobId}`);
+
+            if (data.status === 'failed' && data.error_message) {
+                errorEl.textContent = data.error_message;
+                errorEl.classList.remove('hidden');
+            } else {
+                errorEl.classList.add('hidden');
+            }
+
+            if (data.status === 'completed' && data.download_url) {
+                downloadEl.classList.remove('hidden');
+                downloadEl.onclick = () => downloadFile(jobId);
+            } else {
+                downloadEl.classList.add('hidden');
+            }
+        }
+
+        function startPolling(jobId) {
+            if (pollingIntervals[jobId]) return;
+            
+            pollingIntervals[jobId] = setInterval(async () => {
+                try {
+                    const response = await fetch(`/status/${jobId}`, {
+                        credentials: 'include'
+                    });
+                    const data = await response.json();
+                    updateJobCard(jobId, data);
+                    updateQueueInfo();
+
+                    if (data.status === 'completed' || data.status === 'failed' || data.status === 'expired') {
+                        clearInterval(pollingIntervals[jobId]);
+                        delete pollingIntervals[jobId];
+                    }
+                } catch (e) {
+                    console.error('Polling error:', e);
+                }
+            }, 2000);
+        }
+
+        async function downloadFile(jobId) {
+            try {
+                const response = await fetch(`/download/${jobId}`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Download fehlgeschlagen');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${jobId}.step`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Download fehlgeschlagen: ' + error.message);
+            }
+        }
+
+        async function updateQueueInfo() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                
+                const queuedJobs = document.querySelectorAll('.job-card.queued');
+                if (queuedJobs.length > 0 || stats.queued_jobs > 0) {
+                    queueInfo.classList.remove('hidden');
+                    queuePosition.textContent = stats.queued_jobs;
+                    document.getElementById('maxParallel').textContent = stats.max_parallel;
+                } else {
+                    queueInfo.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Queue info error:', e);
+            }
+        }
+
+        function openSettings() {
+            settingsModal.classList.add('visible');
+            loadSettings();
+        }
+
+        function closeSettings() {
+            settingsModal.classList.remove('visible');
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                
+                document.getElementById('settingMaxParallel').value = stats.max_parallel;
+                document.getElementById('maxParallelDisplay').textContent = stats.max_parallel;
+            } catch (e) {
+                console.error('Load settings error:', e);
+            }
+        }
+
+        function saveSettings() {
+            alert('Einstellungen können zur Laufzeit nicht geändert werden. Bitte config/settings.yaml bearbeiten und den Service neu starten.');
+            closeSettings();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) closeSettings();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeSettings();
+        });
+
+        setInterval(async () => {
+            try {
+                await fetch('/keepalive', { 
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (e) {
+                console.error('Keep-alive failed:', e);
+            }
+        }, 30000);
+
+        updateQueueInfo();
+    </script>
+</body>
+</html>

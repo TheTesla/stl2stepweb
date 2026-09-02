@@ -1,0 +1,35 @@
+# stl2step Web Service Configuration
+
+# Server settings
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+# Queue settings
+queue:
+  max_parallel_conversions: 2
+  max_queue_size: 100
+
+# Conversion limits (per job)
+conversion:
+  timeout_seconds: 300
+  memory_limit_mb: 2048
+
+# Session settings
+session:
+  # Max time to keep converted file after conversion completes (seconds)
+  max_file_retention_seconds: 3600
+  # Keep-alive interval - client must ping at least this often (seconds)
+  keep_alive_interval_seconds: 30
+  # Session cleanup interval (seconds)
+  cleanup_interval_seconds: 60
+
+# File upload settings
+upload:
+  max_file_size_mb: 100
+  allowed_extensions: [".stl", ".STL"]
+
+# Storage paths
+storage:
+  temp_dir: "/tmp/stl2step_sessions"
+  upload_dir: "/tmp/stl2step_uploads"

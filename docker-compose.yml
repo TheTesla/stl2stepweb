@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  stl2step:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config/settings.yaml:/app/config/settings.yaml:ro
+      - stl2step_temp:/tmp/stl2step_sessions
+      - stl2step_uploads:/tmp/stl2step_uploads
+    environment:
+      - STL2STEP_CONFIG=/app/config/settings.yaml
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  stl2step_temp:
+  stl2step_uploads:
