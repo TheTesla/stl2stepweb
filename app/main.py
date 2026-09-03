@@ -45,7 +45,7 @@ def get_or_create_session(session_id: str | None = None) -> str:
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, session_id: str | None = Cookie(default=None)):
     session_id = get_or_create_session(session_id)
-    response = templates.TemplateResponse("index.html", {"request": request})
+    response = templates.TemplateResponse(request, "index.html")
     response.set_cookie(key="session_id", value=session_id, httponly=True, max_age=settings.session.max_file_retention_seconds)
     return response
 
