@@ -12,9 +12,10 @@ from app.config import get_settings, ensure_dirs
 from app.models import SessionManager, JobStatus
 from app.worker import ConversionWorker
 
+BASE_DIR = Path(__file__).resolve().parent.parent
 # Create Jinja2 environment with cache_size=0 to avoid unhashable type errors
 # The request object isn't hashable, so we disable template caching
-jinja_env = Environment(loader=FileSystemLoader("templates"), cache_size=0)
+jinja_env = Environment(loader=FileSystemLoader(str(BASE_DIR / "templates")), cache_size=0)
 templates = Jinja2Templates(env=jinja_env)
 
 session_manager: SessionManager = None
